@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ### Hi there 👋
 I'm a high schooler who spends way too much time learning
 
@@ -14,4 +13,4 @@ I'm a high schooler who spends way too much time learning
 <p align="center"><a href="https://wakatime.com/@aamira">
   <img align="center" width="400" height="300" src="https://wakatime.com/share/@AamirA/51c985fe-39f5-45c7-b07b-a595e6955ec0.svg" />
 </a>
->>>>>>> 80b38eb4c4c0cc703baeb1ce10703edbed70712e
+
