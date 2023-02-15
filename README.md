@@ -1,5 +1,6 @@
 ### Hi there 👋
-I'm a high schooler who spends way too much time learning about technology and not doing school work. <br>
+I'm a high schooler who spends way too much time [learning about technology](https://excalidraw.com/#json=cGS7S0lDlL4aCGcbN0lJv,pdHmlRlQDUgS3Jk3Dxf-Ug) and not doing school work. 
+A lot of my enthusiasum for tech comes from some awsome youtube's who showed me how to enjoy tinkering with code. @ChrisTitusTech @ThePrimeagen
 
 <a href="https://wakatime.com/@a74de5a2-6029-42fc-af5a-6c68022b44ae"><img src="https://wakatime.com/badge/user/a74de5a2-6029-42fc-af5a-6c68022b44ae.svg" alt="Total time coded since Oct 12 2022" /></a>
 <hr>
