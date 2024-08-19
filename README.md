@@ -1,5 +1,5 @@
 ### Hi there 👋
-I'm a high schooler who spends way too much time [learning about technology](https://excalidraw.com/#json=cGS7S0lDlL4aCGcbN0lJv,pdHmlRlQDUgS3Jk3Dxf-Ug) and not doing school work.
+I'm a high schooler who spends way too much time learning about technology and not doing school work.
 
 A lot of my enthusiasum for tech comes from some awesome youtubes who showed me how to enjoy tinkering with code. 
 
