@@ -7,10 +7,10 @@ A lot of my enthusiasum for tech comes from some awesome youtubes who showed me 
 <hr>
 <div align="center">
   <a href="https://github.com/anuraghazra/github-readme-stats">
-    <img align="center" src="https://github-readme-stats.vercel.app/api?username=aamirazad&theme=rose_pine&show_icons=true" />
+    <img align="center" width+200 src="https://github-readme-stats.vercel.app/api?username=aamirazad&theme=rose_pine&show_icons=true&card_width=300" />
   </a>
   <a href="https://git.io/streak-stats">
-    <img align="center" src="https://github-readme-streak-stats.herokuapp.com?user=aamirazad&theme=dark&mode=weekly" alt="GitHub Streak" />
+    <img align="center" src="https://github-readme-streak-stats.herokuapp.com?user=aamirazad&theme=dark&mode=weekly&card_width=350" alt="GitHub Streak" />
   </a>
 </div>
 <p align="center"><a href="https://wakatime.com/@aamira">
