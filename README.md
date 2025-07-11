@@ -1,5 +1,7 @@
 ### Hey there!
 
+remote change (learning rebasing)
+
 I am a dedicated high school student who loves learning. Recently, I've invested [many hours](https://wakatime.com/@AamirA) in learning programming. To list the main ones: I completed [CS50](https://cs50.harvard.edu/), [Carnegie Mellon University](https://academy.cs.cmu.edu/course-info)'s College Programming and Computer Science, and recently, advanced to the FBLA National Leadership Conference. I have many different projects I'm working on, but the project I'm most ambitious about is CalOS, an easy-to-use, open-source interface for managing a NAS and a Homelab.
 
 <a href="https://wakatime.com/@a74de5a2-6029-42fc-af5a-6c68022b44ae"><img src="https://wakatime.com/badge/user/a74de5a2-6029-42fc-af5a-6c68022b44ae.svg" alt="Total time coded since Oct 12 2022" /></a>
