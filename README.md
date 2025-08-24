@@ -9,7 +9,7 @@ I am a dedicated high school student who loves learning. Recently, I've invested
     <img align="center" width+200 src="https://github-readme-stats.vercel.app/api?username=aamirazad&theme=rose_pine&show_icons=true&card_width=300" />
   </a>
   <a href="https://git.io/streak-stats">
-    <img align="center" src="https://streak.aamira.me/?user=aamirazad&theme=dark&mode=weekly&card_width=350" alt="GitHub Streak" />
+    <img align="center" src="https://streak-stats.demolab.com/?user=aamirazad&theme=dark&mode=weekly&card_width=350" alt="GitHub Streak" />
   </a>
 </div>
 <p align="center"><a href="https://wakatime.com/@aamira">
