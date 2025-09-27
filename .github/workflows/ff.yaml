@@ -51,14 +51,6 @@ jobs:
           issue-number: ${{ github.event.issue.number }}
           body: "⚠️ Cannot fast-forward merge because `${{ env.PR_BRANCH }}` is not up to date with `${{ env.BASE_BRANCH }}`. Please rebase first."
 
-      - name: Set author and committer
-        id: git_user
-        run: |
-          PR_AUTHOR=$(jq -r .user.login <<< '${{ steps.pr.outputs.data }}')
-          echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
-          MERGE_COMMENTER=${{ github.event.comment.user.login }}
-          echo "MERGE_COMMENTER=$MERGE_COMMENTER" >> $GITHUB_ENV
-
       - name: Fast-forward merge into base
         if: steps.up_to_date.outputs.result == 'up_to_date'
         run: |
@@ -68,8 +60,9 @@ jobs:
           git merge --ff-only $PR_BRANCH
           NEW_SHA=$(git rev-parse HEAD)
           echo "NEW_SHA=$NEW_SHA" >> $GITHUB_ENV
+          git push origin $BASE_BRANCH
 
-      - name: Update CHANGELOG.md and commit
+      - name: Update CHANGELOG.md
         if: steps.up_to_date.outputs.result == 'up_to_date'
         run: |
           SHORT_PREV=$(echo $PREV_SHA | cut -c1-7)
@@ -77,13 +70,11 @@ jobs:
           COMPARE_URL="https://github.com/${{ github.repository }}/compare/$SHORT_PREV...$SHORT_NEW"
           ENTRY="- ${PR_TITLE} (https://github.com/${{ github.repository }}/pull/${PR_NUMBER}) [\`${SHORT_PREV}...${SHORT_NEW}\`]($COMPARE_URL)"
           echo "$ENTRY" >> CHANGELOG.md
-        
-          export GIT_AUTHOR_NAME="$PR_AUTHOR"
-          export GIT_AUTHOR_EMAIL="$PR_AUTHOR@users.noreply.github.com"
-          export GIT_COMMITTER_NAME="$MERGE_COMMITTER"
-          export GIT_COMMITTER_EMAIL="$MERGE_COMMITTER@users.noreply.github.com"
 
-          # Commit and push all changes
+          # Use the GitHub comment author's name/email as committer
+          git config user.name "${{ github.event.comment.user.login }}"
+          git config user.email "${{ github.event.comment.user.login }}@users.noreply.github.com"
+
           git add CHANGELOG.md
           git commit -m "chore: merge ${PR_TITLE} (#${PR_NUMBER})"
           git push origin $BASE_BRANCH
