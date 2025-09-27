@@ -23,10 +23,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
-      - name: Extract branch names
+      - name: Extract info
         run: |
           echo "PR_BRANCH=$(jq -r .head.ref <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
           echo "BASE_BRANCH=$(jq -r .base.ref <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
+          echo "PR_TITLE=$(jq -r .title <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
 
       - name: Fetch all branches
         run: git fetch origin +refs/heads/*:refs/remotes/origin/*
@@ -53,7 +55,22 @@ jobs:
         if: steps.up_to_date.outputs.result == 'up_to_date'
         run: |
           git checkout $BASE_BRANCH
+          PREV_SHA=$(git rev-parse HEAD)
+          echo "PREV_SHA=$PREV_SHA" >> $GITHUB_ENV
           git merge --ff-only $PR_BRANCH
+          NEW_SHA=$(git rev-parse HEAD)
+          echo "NEW_SHA=$NEW_SHA" >> $GITHUB_ENV
+          git push origin $BASE_BRANCH
+
+      - name: Update CHANGELOG.md
+        if: steps.up_to_date.outputs.result == 'up_to_date'
+        run: |
+          COMPARE_URL="https://github.com/${{ github.repository }}/compare/$PREV_SHA...$NEW_SHA"
+          echo -e "\n## [#${PR_NUMBER}] ${PR_TITLE}\nPR: https://github.com/${{ github.repository }}/pull/${PR_NUMBER}\nCompare: $COMPARE_URL\n" >> CHANGELOG.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "${PR_TITLE} (#${PR_NUMBER})"
           git push origin $BASE_BRANCH
 
       - name: Comment success
@@ -61,4 +78,7 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.issue.number }}
-          body: "🎉 Merged `${{ env.PR_BRANCH }}` into `${{ env.BASE_BRANCH }}`."
+          body: |
+            🎉 Successfully fast-forward merged `${{ env.PR_BRANCH }}` into `${{ env.BASE_BRANCH }}`.
+            - PR: https://github.com/${{ github.repository }}/pull/${{ env.PR_NUMBER }}
+            - Compare: https://github.com/${{ github.repository }}/compare/${{ env.PREV_SHA }}...${{ env.NEW_SHA }}
