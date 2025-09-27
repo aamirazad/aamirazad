@@ -85,7 +85,7 @@ jobs:
 
           # Commit and push all changes
           git add CHANGELOG.md
-          git commit -m "chore: merge `${PR_TITLE}` (#${PR_NUMBER})"
+          git commit -m "chore: merge ${PR_TITLE} (#${PR_NUMBER})"
           git push origin $BASE_BRANCH
 
       - name: Comment success
