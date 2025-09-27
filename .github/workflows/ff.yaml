@@ -86,5 +86,4 @@ jobs:
           issue-number: ${{ github.event.issue.number }}
           body: |
             🎉 Successfully fast-forward merged `${{ env.PR_BRANCH }}` into `${{ env.BASE_BRANCH }}`.
-            - PR: https://github.com/${{ github.repository }}/pull/${{ env.PR_NUMBER }}
             - Compare: https://github.com/${{ github.repository }}/compare/${{ env.PREV_SHA }}...${{ env.NEW_SHA }}
