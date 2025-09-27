@@ -65,10 +65,16 @@ jobs:
       - name: Update CHANGELOG.md
         if: steps.up_to_date.outputs.result == 'up_to_date'
         run: |
-          COMPARE_URL="https://github.com/${{ github.repository }}/compare/$PREV_SHA...$NEW_SHA"
-          echo -e "\n## [#${PR_NUMBER}] ${PR_TITLE}\nPR: https://github.com/${{ github.repository }}/pull/${PR_NUMBER}\nCompare: $COMPARE_URL\n" >> CHANGELOG.md
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          SHORT_PREV=$(echo $PREV_SHA | cut -c1-7)
+          SHORT_NEW=$(echo $NEW_SHA | cut -c1-7)
+          COMPARE_URL="https://github.com/${{ github.repository }}/compare/$SHORT_PREV...$SHORT_NEW"
+          ENTRY="- ${PR_TITLE} (https://github.com/${{ github.repository }}/pull/${PR_NUMBER}) [\`${SHORT_PREV}...${SHORT_NEW}\`]($COMPARE_URL)"
+          echo "$ENTRY" >> CHANGELOG.md
+
+          # Use the GitHub comment author's name/email as committer
+          git config user.name "${{ github.event.comment.user.login }}"
+          git config user.email "${{ github.event.comment.user.login }}@users.noreply.github.com"
+
           git add CHANGELOG.md
           git commit -m "${PR_TITLE} (#${PR_NUMBER})"
           git push origin $BASE_BRANCH
