@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # needed for merge checks
+          fetch-depth: 0
           token: ${{ secrets.PAT }}
 
       - name: Get PR details
@@ -28,6 +28,7 @@ jobs:
           echo "PR_BRANCH=$(jq -r .head.ref <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
           echo "BASE_BRANCH=$(jq -r .base.ref <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
           echo "PR_TITLE=$(jq -r .title <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
+          echo "PR_AUTHOR=$(jq -r .user.login <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
           echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
 
       - name: Fetch all branches
@@ -76,7 +77,7 @@ jobs:
           git config user.email "${{ github.event.comment.user.login }}@users.noreply.github.com"
 
           git add CHANGELOG.md
-          git commit -m "chore: merge ${PR_TITLE} (#${PR_NUMBER})"
+          git commit --author "johndoe12312 <johndoe12312@users.noreply.github.com>" -m "chore: merge ${PR_TITLE} (#${PR_NUMBER})"
           git push origin $BASE_BRANCH
 
       - name: Comment success
