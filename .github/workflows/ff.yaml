@@ -31,22 +31,33 @@ jobs:
       - name: Fetch all branches
         run: git fetch origin +refs/heads/*:refs/remotes/origin/*
 
-      - name: Ensure PR is up to date with base
+      - name: Check if PR is up to date
+        id: up_to_date
         run: |
           git checkout $PR_BRANCH
           git fetch origin $BASE_BRANCH
-          if ! git merge-base --is-ancestor origin/$BASE_BRANCH $PR_BRANCH; then
-            echo "❌ PR branch is not up to date with $BASE_BRANCH. Please rebase first."
-            exit 1
+          if git merge-base --is-ancestor origin/$BASE_BRANCH $PR_BRANCH; then
+            echo "result=up_to_date" >> $GITHUB_OUTPUT
+          else
+            echo "result=outdated" >> $GITHUB_OUTPUT
           fi
 
+      - name: Comment if outdated
+        if: steps.up_to_date.outputs.result == 'outdated'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: "⚠️ Cannot fast-forward merge because `${{ env.PR_BRANCH }}` is not up to date with `${{ env.BASE_BRANCH }}`. Please rebase first."
+
       - name: Fast-forward merge into base
+        if: steps.up_to_date.outputs.result == 'up_to_date'
         run: |
           git checkout $BASE_BRANCH
           git merge --ff-only $PR_BRANCH
           git push origin $BASE_BRANCH
 
       - name: Comment success
+        if: steps.up_to_date.outputs.result == 'up_to_date'
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.issue.number }}
