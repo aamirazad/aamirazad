@@ -1,0 +1,53 @@
+name: Merge Bot
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  fast-forward-merge:
+    if: github.event.issue.pull_request != null && contains(github.event.comment.body, '/merge')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed for merge checks
+          token: ${{ secrets.PAT }}
+
+      - name: Get PR details
+        id: pr
+        uses: octokit/request-action@v2.x
+        with:
+          route: GET /repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+
+      - name: Extract branch names
+        run: |
+          echo "PR_BRANCH=$(jq -r .head.ref <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
+          echo "BASE_BRANCH=$(jq -r .base.ref <<< '${{ steps.pr.outputs.data }}')" >> $GITHUB_ENV
+
+      - name: Fetch all branches
+        run: git fetch origin +refs/heads/*:refs/remotes/origin/*
+
+      - name: Ensure PR is up to date with base
+        run: |
+          git checkout $PR_BRANCH
+          git fetch origin $BASE_BRANCH
+          if ! git merge-base --is-ancestor origin/$BASE_BRANCH $PR_BRANCH; then
+            echo "❌ PR branch is not up to date with $BASE_BRANCH. Please rebase first."
+            exit 1
+          fi
+
+      - name: Fast-forward merge into base
+        run: |
+          git checkout $BASE_BRANCH
+          git merge --ff-only $PR_BRANCH
+          git push origin $BASE_BRANCH
+
+      - name: Comment success
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: "🎉 Merged `${{ env.PR_BRANCH }}` into `${{ env.BASE_BRANCH }}`."
