@@ -62,20 +62,21 @@ jobs:
           echo "NEW_SHA=$NEW_SHA" >> $GITHUB_ENV
           git push origin $BASE_BRANCH
 
-      - name: Update CHANGELOG.md
+      - name: Set author and committer
+        id: git_user
+        run: |
+          PR_AUTHOR=$(jq -r .user.login <<< '${{ steps.pr.outputs.data }}')
+          echo "PR_AUTHOR=$PR_AUTHOR" >> $GITHUB_ENV
+          MERGE_COMMENTER=${{ github.event.comment.user.login }}
+          echo "MERGE_COMMENTER=$MERGE_COMMENTER" >> $GITHUB_ENV
+
+      - name: Commit CHANGELOG.md with correct author/committer
         if: steps.up_to_date.outputs.result == 'up_to_date'
         run: |
-          SHORT_PREV=$(echo $PREV_SHA | cut -c1-7)
-          SHORT_NEW=$(echo $NEW_SHA | cut -c1-7)
-          COMPARE_URL="https://github.com/${{ github.repository }}/compare/$SHORT_PREV...$SHORT_NEW"
-          ENTRY="- ${PR_TITLE} (https://github.com/${{ github.repository }}/pull/${PR_NUMBER}) [\`${SHORT_PREV}...${SHORT_NEW}\`]($COMPARE_URL)"
-          echo "$ENTRY" >> CHANGELOG.md
-
-          # Set author = PR creator, committer = comment author
-          export GIT_AUTHOR_NAME="${{ steps.pr.outputs.data | fromJson | .user.login }}"
-          export GIT_AUTHOR_EMAIL="${{ steps.pr.outputs.data | fromJson | .user.login }}@users.noreply.github.com"
-          export GIT_COMMITTER_NAME="${{ github.event.comment.user.login }}"
-          export GIT_COMMITTER_EMAIL="${{ github.event.comment.user.login }}@users.noreply.github.com"
+          export GIT_AUTHOR_NAME="$PR_AUTHOR"
+          export GIT_AUTHOR_EMAIL="$PR_AUTHOR@users.noreply.github.com"
+          export GIT_COMMITTER_NAME="$MERGE_COMMENTER"
+          export GIT_COMMITTER_EMAIL="$MERGE_COMMENTER@users.noreply.github.com"
 
           git add CHANGELOG.md
           git commit -m "${PR_TITLE} (#${PR_NUMBER})"
