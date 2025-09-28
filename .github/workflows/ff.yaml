@@ -93,10 +93,17 @@ jobs:
           if git merge --ff-only $PR_BRANCH; then
             NEW_SHA=$(git rev-parse HEAD)
             echo "NEW_SHA=$NEW_SHA" >> $GITHUB_ENV
-            git push origin $BASE_BRANCH
-            echo "success=true" >> $GITHUB_OUTPUT
+            
+            # Try to push and capture result
+            if git push origin $BASE_BRANCH; then
+              echo "success=true" >> $GITHUB_OUTPUT
+            else
+              echo "success=false" >> $GITHUB_OUTPUT
+              echo "error_type=push_failed" >> $GITHUB_OUTPUT
+            fi
           else
             echo "success=false" >> $GITHUB_OUTPUT
+            echo "error_type=merge_failed" >> $GITHUB_OUTPUT
           fi
 
       - name: Comment merge failure
@@ -104,7 +111,12 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.issue.number }}
-          body: "❌ Fast-forward merge failed. Please make sure your code follows the contributor guidelines. Pinging @aamirazad."
+          body: |
+            ❌ Merge failed.
+            
+            ${{ steps.merge.outputs.error_type == 'push_failed' && '**Push rejected**: This is likely due to repository rules (e.g., no merge commits allowed). The merge was successful locally but could not be pushed to the remote repository.' || '**Fast-forward merge failed**: This usually means there are conflicts or the branch cannot be fast-forwarded. Please check the branch status and try rebasing.' }}
+            
+            _@aamirazad_
 
       - name: Update CHANGELOG.md
         if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'true'
