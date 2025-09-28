@@ -66,10 +66,7 @@ jobs:
       - name: Update CHANGELOG.md
         if: steps.up_to_date.outputs.result == 'up_to_date'
         run: |
-          SHORT_PREV=$(echo $PREV_SHA | cut -c1-7)
-          SHORT_NEW=$(echo $NEW_SHA | cut -c1-7)
-          COMPARE_URL="https://github.com/${{ github.repository }}/compare/$SHORT_PREV...$SHORT_NEW"
-          ENTRY="- ${PR_TITLE} by [@${PR_AUTHOR}](https://github.com/${PR_AUTHOR}) for https://github.com/${{ github.repository }}/pull/${PR_NUMBER} was merged by ${{ github.event.comment.user.login }}: [\`$SHORT_PREV...$SHORT_NEW\`]($COMPARE_URL)"
+          ENTRY="- ${PR_TITLE} by [@${PR_AUTHOR}](https://github.com/${PR_AUTHOR}) for https://github.com/${{ github.repository }}/pull/${PR_NUMBER}. [Code changes](https://github.com/${{ github.repository }}/compare/${PREV_SHA}...${NEW_SHA}) was merged by [@${{ github.event.comment.user.login }}](https://github.com/${{ github.event.comment.user.login }})"
           
           # If no "Unreleased Features" section, prepend it with details block
           if ! grep -q '^## Unreleased Features' CHANGELOG.md; then
@@ -92,7 +89,6 @@ jobs:
             {
               print
               if(!done && /<summary>All commits<\/summary>/){
-                print ""
                 print entry "\n"
                 done=1
               }
