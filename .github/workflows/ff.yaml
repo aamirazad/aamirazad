@@ -90,10 +90,12 @@ jobs:
             # Otherwise insert the new entry just before the first </details>
             awk -v entry="$ENTRY" 'BEGIN{done=0}
             {
-              print
               if(!done && /<\/details>/){
-                print entry"\n"
+                print entry "\n"
+                print
                 done=1
+              } else {
+                print
               }
             }' CHANGELOG.md > tmp_changelog.md
             mv tmp_changelog.md CHANGELOG.md
