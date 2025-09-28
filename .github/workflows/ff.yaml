@@ -69,10 +69,37 @@ jobs:
           SHORT_PREV=$(echo $PREV_SHA | cut -c1-7)
           SHORT_NEW=$(echo $NEW_SHA | cut -c1-7)
           COMPARE_URL="https://github.com/${{ github.repository }}/compare/$SHORT_PREV...$SHORT_NEW"
-          ENTRY="- ${PR_TITLE} (https://github.com/${{ github.repository }}/pull/${PR_NUMBER}) [\`${SHORT_PREV}...${SHORT_NEW}\`]($COMPARE_URL)"
-          echo "$ENTRY" >> CHANGELOG.md
+          ENTRY="- ${PR_TITLE} (https://github.com/${{ github.repository }}/pull/${PR_NUMBER}) [\`$SHORT_PREV...$SHORT_NEW\`]($COMPARE_URL)"
 
-          # Use the GitHub comment author's name/email as committer
+          # If no "Unreleased Features" section, prepend it with details block
+          if ! grep -q '^## Unreleased Features' CHANGELOG.md; then
+            cat <<EOF > tmp_changelog.md
+          ## Unreleased Features
+
+          <details>
+          <summary>All commits</summary>
+
+          $ENTRY
+
+          </details>
+
+          EOF
+            cat CHANGELOG.md >> tmp_changelog.md
+            mv tmp_changelog.md CHANGELOG.md
+          else
+            # Otherwise insert the new entry just before the first </details>
+            awk -v entry="$ENTRY" 'BEGIN{done=0}
+            {
+              print
+              if(!done && /<\/details>/){
+                print entry"\n"
+                done=1
+              }
+            }' CHANGELOG.md > tmp_changelog.md
+            mv tmp_changelog.md CHANGELOG.md
+          fi
+
+          # Use the comment author as committer
           git config user.name "${{ github.event.comment.user.login }}"
           git config user.email "${{ github.event.comment.user.login }}@users.noreply.github.com"
 
