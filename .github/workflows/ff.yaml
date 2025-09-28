@@ -87,15 +87,14 @@ jobs:
             cat CHANGELOG.md >> tmp_changelog.md
             mv tmp_changelog.md CHANGELOG.md
           else
-            # Otherwise insert the new entry just before the first </details>
+            # Insert the new entry immediately after the summary
             awk -v entry="$ENTRY" 'BEGIN{done=0}
             {
-              if(!done && /<\/details>/){
+              print
+              if(!done && /<summary>All commits<\/summary>/){
+                print ""
                 print entry "\n"
-                print
                 done=1
-              } else {
-                print
               }
             }' CHANGELOG.md > tmp_changelog.md
             mv tmp_changelog.md CHANGELOG.md
