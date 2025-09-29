@@ -17,7 +17,18 @@ jobs:
       prev-sha: ${{ steps.merge.outputs.prev_sha }}
       new-sha: ${{ steps.merge.outputs.new_sha }}
       merge-success: ${{ steps.merge.outputs.success }}
+      comment-id: ${{ steps.loading_comment.outputs.comment-id }}
     steps:
+      - name: Create loading comment
+        id: loading_comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            ![loading](https://emoji.slack-edge.com/T0266FRGM/beachball/d6219c5b10086a16.gif) Processing merge request...
+            
+            [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
       - name: Set commenter info
         run: |
           echo "COMMENTER=${{ github.event.comment.user.login }}" >> $GITHUB_ENV
@@ -45,8 +56,11 @@ jobs:
         if: steps.permission_check.outputs.allowed == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.issue.number }}
-          body: "🔒 Sorry @${{ env.COMMENTER }}, only repository maintainers can use the `/merge` command."
+          comment-id: ${{ steps.loading_comment.outputs.comment-id }}
+          body: |
+            🔒 Sorry @${{ env.COMMENTER }}, only repository maintainers can use the `/merge` command.
+            
+            [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Checkout repo
         if: steps.permission_check.outputs.allowed == 'true'
@@ -95,8 +109,11 @@ jobs:
         if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'outdated'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.issue.number }}
-          body: "⚠️ Cannot fast-forward merge because `${{ steps.pr.outputs.branch }}` is not up to date with `${{ steps.pr.outputs.base_branch }}`. Please rebase first."
+          comment-id: ${{ steps.loading_comment.outputs.comment-id }}
+          body: |
+            ⚠️ Cannot fast-forward merge because `${{ steps.pr.outputs.branch }}` is not up to date with `${{ steps.pr.outputs.base_branch }}`. Please rebase first.
+            
+            [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Fast-forward merge into base
         if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date'
@@ -125,11 +142,13 @@ jobs:
         if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.issue.number }}
+          comment-id: ${{ steps.loading_comment.outputs.comment-id }}
           body: |
             ❌ Merge failed.
 
             ${{ steps.merge.outputs.error_type == 'push_failed' && '**Push rejected**: This is likely due to repository rules (e.g., no merge commits allowed). The merge was successful locally but could not be pushed to the remote repository.' || '**Fast-forward merge failed**: This usually means there are conflicts or the branch cannot be fast-forwarded. Please check the branch status and try rebasing.' }}
+
+            [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
             _@${{ env.COMMENTER }}_
 
@@ -154,6 +173,11 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.MERGE_PAT }}
+  
+      - name: Pull latest changes
+        run: |
+          git checkout ${{ env.BASE_BRANCH }}
+          git pull origin ${{ env.BASE_BRANCH }}
 
       - name: Update CHANGELOG.md
         id: changelog
@@ -247,7 +271,7 @@ jobs:
         if: steps.changelog.outputs.success == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.issue.number }}
+          comment-id: ${{ needs.merge-pr.outputs.comment-id }}
           body: |
             ⚠️ Merge succeeded but changelog update failed.
             
@@ -255,13 +279,17 @@ jobs:
             
             The PR has been merged successfully but the changelog was not updated automatically.
             
+            [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
             _@${{ env.COMMENTER }}_
 
       - name: Comment success
         if: steps.changelog.outputs.success == 'true'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.issue.number }}
+          comment-id: ${{ needs.merge-pr.outputs.comment-id }}
           body: |
             🎉 Successfully fast-forward merged `${{ env.PR_BRANCH }}` into `${{ env.BASE_BRANCH }}`.
             - Compare: https://github.com/${{ github.repository }}/compare/${{ env.PREV_SHA }}...${{ env.NEW_SHA }}
+            
+            [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
