@@ -5,25 +5,29 @@ on:
     types: [created]
 
 jobs:
-  check-permissions:
+  merge-pr:
     if: github.event.issue.pull_request != null && contains(github.event.comment.body, '/merge')
     runs-on: ubuntu-latest
     outputs:
       allowed: ${{ steps.permission_check.outputs.allowed }}
-      commenter: ${{ steps.set_info.outputs.commenter }}
-      pr_number: ${{ steps.set_info.outputs.pr_number }}
+      pr-branch: ${{ steps.pr.outputs.branch }}
+      base-branch: ${{ steps.pr.outputs.base_branch }}
+      pr-title: ${{ steps.pr.outputs.title }}
+      pr-author: ${{ steps.pr.outputs.author }}
+      prev-sha: ${{ steps.merge.outputs.prev_sha }}
+      new-sha: ${{ steps.merge.outputs.new_sha }}
+      merge-success: ${{ steps.merge.outputs.success }}
     steps:
       - name: Set commenter info
-        id: set_info
         run: |
-          echo "commenter=${{ github.event.comment.user.login }}" >> $GITHUB_OUTPUT
-          echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          echo "COMMENTER=${{ github.event.comment.user.login }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
 
       - name: Check permissions
         id: check_permissions
         uses: octokit/request-action@v2.x
         with:
-          route: GET /repos/${{ github.repository }}/collaborators/${{ github.event.comment.user.login }}/permission
+          route: GET /repos/${{ github.repository }}/collaborators/${{ env.COMMENTER }}/permission
         env:
           GITHUB_TOKEN: ${{ secrets.MERGE_PAT }}
 
@@ -37,35 +41,22 @@ jobs:
             echo "allowed=false" >> $GITHUB_OUTPUT
           fi
 
-  notify-permission-denied:
-    needs: check-permissions
-    if: needs.check-permissions.outputs.allowed == 'false'
-    runs-on: ubuntu-latest
-    steps:
       - name: Comment permission denied
+        if: steps.permission_check.outputs.allowed == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ needs.check-permissions.outputs.pr_number }}
-          body: "🔒 Sorry @${{ needs.check-permissions.outputs.commenter }}, only repository maintainers can use the `/merge` command."
+          issue-number: ${{ github.event.issue.number }}
+          body: "🔒 Sorry @${{ env.COMMENTER }}, only repository maintainers can use the `/merge` command."
 
-  validate-pr:
-    needs: check-permissions
-    if: needs.check-permissions.outputs.allowed == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      branch: ${{ steps.pr.outputs.branch }}
-      base_branch: ${{ steps.pr.outputs.base_branch }}
-      title: ${{ steps.pr.outputs.title }}
-      author: ${{ steps.pr.outputs.author }}
-      is_up_to_date: ${{ steps.up_to_date.outputs.result }}
-    steps:
       - name: Checkout repo
+        if: steps.permission_check.outputs.allowed == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.MERGE_PAT }}
 
       - name: Get PR details
+        if: steps.permission_check.outputs.allowed == 'true'
         id: pr
         uses: actions/github-script@v7
         with:
@@ -74,18 +65,22 @@ jobs:
             const { data } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: ${{ needs.check-permissions.outputs.pr_number }}
+              pull_number: ${{ github.event.issue.number }}
             });
 
             core.setOutput('branch', data.head.ref);
             core.setOutput('base_branch', data.base.ref);
             core.setOutput('title', data.title);
             core.setOutput('author', data.user.login);
+            core.setOutput('mergeable', data.mergeable);
+            core.setOutput('state', data.state);
 
       - name: Fetch all branches
+        if: steps.permission_check.outputs.allowed == 'true'
         run: git fetch origin +refs/heads/*:refs/remotes/origin/*
 
       - name: Check if PR is up to date
+        if: steps.permission_check.outputs.allowed == 'true'
         id: up_to_date
         run: |
           git checkout ${{ steps.pr.outputs.branch }}
@@ -96,48 +91,26 @@ jobs:
             echo "result=outdated" >> $GITHUB_OUTPUT
           fi
 
-  notify-outdated:
-    needs: [check-permissions, validate-pr]
-    if: needs.validate-pr.outputs.is_up_to_date == 'outdated'
-    runs-on: ubuntu-latest
-    steps:
       - name: Comment if outdated
+        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'outdated'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ needs.check-permissions.outputs.pr_number }}
-          body: "⚠️ Cannot fast-forward merge because `${{ needs.validate-pr.outputs.branch }}` is not up to date with `${{ needs.validate-pr.outputs.base_branch }}`. Please rebase first."
-
-  merge-pr:
-    needs: [check-permissions, validate-pr]
-    if: needs.validate-pr.outputs.is_up_to_date == 'up_to_date'
-    runs-on: ubuntu-latest
-    outputs:
-      success: ${{ steps.merge.outputs.success }}
-      error_type: ${{ steps.merge.outputs.error_type }}
-      prev_sha: ${{ steps.merge.outputs.prev_sha }}
-      new_sha: ${{ steps.merge.outputs.new_sha }}
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.MERGE_PAT }}
-
-      - name: Fetch all branches
-        run: git fetch origin +refs/heads/*:refs/remotes/origin/*
+          issue-number: ${{ github.event.issue.number }}
+          body: "⚠️ Cannot fast-forward merge because `${{ steps.pr.outputs.branch }}` is not up to date with `${{ steps.pr.outputs.base_branch }}`. Please rebase first."
 
       - name: Fast-forward merge into base
+        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date'
         id: merge
         run: |
-          git checkout ${{ needs.validate-pr.outputs.base_branch }}
+          git checkout ${{ steps.pr.outputs.base_branch }}
           PREV_SHA=$(git rev-parse HEAD)
           echo "prev_sha=$PREV_SHA" >> $GITHUB_OUTPUT
 
-          if git merge --ff-only ${{ needs.validate-pr.outputs.branch }}; then
+          if git merge --ff-only origin/${{ steps.pr.outputs.branch }}; then
             NEW_SHA=$(git rev-parse HEAD)
             echo "new_sha=$NEW_SHA" >> $GITHUB_OUTPUT
             
-            if git push origin ${{ needs.validate-pr.outputs.base_branch }}; then
+            if git push origin ${{ steps.pr.outputs.base_branch }}; then
               echo "success=true" >> $GITHUB_OUTPUT
             else
               echo "success=false" >> $GITHUB_OUTPUT
@@ -148,27 +121,34 @@ jobs:
             echo "error_type=merge_failed" >> $GITHUB_OUTPUT
           fi
 
-  notify-merge-failure:
-    needs: [check-permissions, validate-pr, merge-pr]
-    if: needs.merge-pr.outputs.success == 'false'
-    runs-on: ubuntu-latest
-    steps:
       - name: Comment merge failure
+        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ needs.check-permissions.outputs.pr_number }}
+          issue-number: ${{ github.event.issue.number }}
           body: |
             ❌ Merge failed.
 
-            ${{ needs.merge-pr.outputs.error_type == 'push_failed' && '**Push rejected**: This is likely due to repository rules (e.g., no merge commits allowed). The merge was successful locally but could not be pushed to the remote repository.' || '**Fast-forward merge failed**: This usually means there are conflicts or the branch cannot be fast-forwarded. Please check the branch status and try rebasing.' }}
+            ${{ steps.merge.outputs.error_type == 'push_failed' && '**Push rejected**: This is likely due to repository rules (e.g., no merge commits allowed). The merge was successful locally but could not be pushed to the remote repository.' || '**Fast-forward merge failed**: This usually means there are conflicts or the branch cannot be fast-forwarded. Please check the branch status and try rebasing.' }}
 
-            _@${{ needs.check-permissions.outputs.commenter }}_
+            _@${{ env.COMMENTER }}_
 
   update-changelog:
-    needs: [check-permissions, validate-pr, merge-pr]
-    if: needs.merge-pr.outputs.success == 'true'
+    needs: merge-pr
+    if: needs.merge-pr.outputs.allowed == 'true' && needs.merge-pr.outputs.merge-success == 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Set environment variables
+        run: |
+          echo "COMMENTER=${{ github.event.comment.user.login }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
+          echo "PR_TITLE=${{ needs.merge-pr.outputs.pr-title }}" >> $GITHUB_ENV
+          echo "PR_AUTHOR=${{ needs.merge-pr.outputs.pr-author }}" >> $GITHUB_ENV
+          echo "PR_BRANCH=${{ needs.merge-pr.outputs.pr-branch }}" >> $GITHUB_ENV
+          echo "BASE_BRANCH=${{ needs.merge-pr.outputs.base-branch }}" >> $GITHUB_ENV
+          echo "PREV_SHA=${{ needs.merge-pr.outputs.prev-sha }}" >> $GITHUB_ENV
+          echo "NEW_SHA=${{ needs.merge-pr.outputs.new-sha }}" >> $GITHUB_ENV
+
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -176,6 +156,7 @@ jobs:
           token: ${{ secrets.MERGE_PAT }}
 
       - name: Update CHANGELOG.md
+        id: changelog
         run: |
           declare -A TYPE_MAP=(
             ["build"]="Build"
@@ -189,13 +170,7 @@ jobs:
             ["test"]="Test"
           )
 
-          PR_TITLE="${{ needs.validate-pr.outputs.title }}"
-          PR_AUTHOR="${{ needs.validate-pr.outputs.author }}"
-          PR_NUMBER="${{ needs.check-permissions.outputs.pr_number }}"
-          PREV_SHA="${{ needs.merge-pr.outputs.prev_sha }}"
-          NEW_SHA="${{ needs.merge-pr.outputs.new_sha }}"
-          COMMENTER="${{ needs.check-permissions.outputs.commenter }}"
-
+          # Parse type, scope, and description from PR_TITLE
           TYPE=$(echo "$PR_TITLE" | sed -E 's/^([a-z]+)(\([^\)]*\))?:.*/\1/')
           SCOPE=$(echo "$PR_TITLE" | sed -nE 's/^[a-z]+\(([^)]*)\):.*/\1/p')
           DESCRIPTION=$(echo "$PR_TITLE" | sed -E 's/^[a-z]+(\([^\)]*\))?:\s*(.*)/\2/')
@@ -217,6 +192,7 @@ jobs:
 
           ENTRY="- ${PREFIX}: ${DESCRIPTION} ([#${PR_NUMBER}](https://github.com/${{ github.repository }}/pull/${PR_NUMBER})) by [@${PR_AUTHOR}](https://github.com/${PR_AUTHOR}) - [\`${SHORT_PREV}...${SHORT_NEW}\`]($COMPARE_URL)"
 
+          # If no "Unreleased Features" section, prepend it with details block
           if ! grep -q '^## Unreleased Features' CHANGELOG.md; then
             cat <<EOF > tmp_changelog.md
           ## Unreleased Features
@@ -232,6 +208,7 @@ jobs:
             cat CHANGELOG.md >> tmp_changelog.md
             mv tmp_changelog.md CHANGELOG.md
           else
+            # Insert the new entry as the first item after the blank line following summary
             awk -v entry="$ENTRY" 'BEGIN{done=0; after_summary=0}
             {
               if(!done && /<summary>All commits<\/summary>/){
@@ -254,18 +231,37 @@ jobs:
           git config user.email "${COMMENTER}@users.noreply.github.com"
 
           git add CHANGELOG.md
-          git commit --author "${PR_AUTHOR} <${PR_AUTHOR}@users.noreply.github.com>" -m "chore(docs): update changelog for #${PR_NUMBER}"
-          git push origin ${{ needs.validate-pr.outputs.base_branch }}
+          if git commit --author "${PR_AUTHOR} <${PR_AUTHOR}@users.noreply.github.com>" -m "chore(docs): update changelog for #${PR_NUMBER}"; then
+            if git push origin $BASE_BRANCH; then
+              echo "success=true" >> $GITHUB_OUTPUT
+            else
+              echo "success=false" >> $GITHUB_OUTPUT
+              echo "error=push_failed" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "error=commit_failed" >> $GITHUB_OUTPUT
+          fi
 
-  notify-success:
-    needs: [check-permissions, validate-pr, merge-pr, update-changelog]
-    if: needs.merge-pr.outputs.success == 'true' && !failure() && !cancelled()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Comment success
+      - name: Comment changelog failure
+        if: steps.changelog.outputs.success == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ needs.check-permissions.outputs.pr_number }}
+          issue-number: ${{ github.event.issue.number }}
           body: |
-            🎉 Successfully fast-forward merged `${{ needs.validate-pr.outputs.branch }}` into `${{ needs.validate-pr.outputs.base_branch }}`.
-            - Compare: https://github.com/${{ github.repository }}/compare/${{ needs.merge-pr.outputs.prev_sha }}...${{ needs.merge-pr.outputs.new_sha }}
+            ⚠️ Merge succeeded but changelog update failed.
+            
+            **Error**: ${{ steps.changelog.outputs.error == 'push_failed' && 'Failed to push changelog commit' || 'Failed to create changelog commit' }}
+            
+            The PR has been merged successfully but the changelog was not updated automatically.
+            
+            _@${{ env.COMMENTER }}_
+
+      - name: Comment success
+        if: steps.changelog.outputs.success == 'true'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            🎉 Successfully fast-forward merged `${{ env.PR_BRANCH }}` into `${{ env.BASE_BRANCH }}`.
+            - Compare: https://github.com/${{ github.repository }}/compare/${{ env.PREV_SHA }}...${{ env.NEW_SHA }}
