@@ -25,7 +25,9 @@ jobs:
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
-            ![loading](https://emoji.slack-edge.com/T0266FRGM/beachball/d6219c5b10086a16.gif) Processing merge request...
+            <img src="https://xrgkyc5aexvkc7oh.public.blob.vercel-storage.com/loading-spinner-TPIqYiHmChtY21ZfF6puFEZq9X5MDx" width="20" align="top">  Merging...
+
+            _I'm going as fast as I can!_
             
             [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
