@@ -59,6 +59,7 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.loading_comment.outputs.comment-id }}
+          edit-mode: replace
           body: |
             🔒 Sorry @${{ env.COMMENTER }}, only repository maintainers can use the `/merge` command.
             
@@ -112,6 +113,7 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.loading_comment.outputs.comment-id }}
+          edit-mode: replace
           body: |
             ⚠️ Cannot fast-forward merge because `${{ steps.pr.outputs.branch }}` is not up to date with `${{ steps.pr.outputs.base_branch }}`. Please rebase first.
             
@@ -145,6 +147,7 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.loading_comment.outputs.comment-id }}
+          edit-mode: replace
           body: |
             ❌ Merge failed.
 
@@ -274,6 +277,7 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ needs.merge-pr.outputs.comment-id }}
+          edit-mode: replace
           body: |
             ⚠️ Merge succeeded but changelog update failed.
             
@@ -290,6 +294,7 @@ jobs:
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ needs.merge-pr.outputs.comment-id }}
+          edit-mode: replace
           body: |
             🎉 Successfully fast-forward merged `${{ env.PR_BRANCH }}` into `${{ env.BASE_BRANCH }}`.
             - Compare: https://github.com/${{ github.repository }}/compare/${{ env.PREV_SHA }}...${{ env.NEW_SHA }}
