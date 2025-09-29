@@ -168,7 +168,7 @@ jobs:
           SHORT_NEW=$(echo $NEW_SHA | cut -c1-7)
           COMPARE_URL="https://github.com/${{ github.repository }}/compare/$SHORT_PREV...$SHORT_NEW"
 
-          ENTRY="${PREFIX}: ${DESCRIPTION} ([#${PR_NUMBER}](https://github.com/${{ github.repository }}/pull/${PR_NUMBER})) by [@${PR_AUTHOR}](https://github.com/${PR_AUTHOR}) - [\`${SHORT_PREV}...${SHORT_NEW}\`]($COMPARE_URL)"
+          ENTRY="- ${PREFIX}: ${DESCRIPTION} ([#${PR_NUMBER}](https://github.com/${{ github.repository }}/pull/${PR_NUMBER})) by [@${PR_AUTHOR}](https://github.com/${PR_AUTHOR}) - [\`${SHORT_PREV}...${SHORT_NEW}\`]($COMPARE_URL)"
 
           # If no "Unreleased Features" section, prepend it with details block
           if ! grep -q '^## Unreleased Features' CHANGELOG.md; then
