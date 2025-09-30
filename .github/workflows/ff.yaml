@@ -5,19 +5,9 @@ on:
     types: [created]
 
 jobs:
-  merge-pr:
+  merge-and-update:
     if: github.event.issue.pull_request != null && contains(github.event.comment.body, '/merge')
     runs-on: ubuntu-latest
-    outputs:
-      allowed: ${{ steps.permission_check.outputs.allowed }}
-      pr-branch: ${{ steps.pr.outputs.branch }}
-      base-branch: ${{ steps.pr.outputs.base_branch }}
-      pr-title: ${{ steps.pr.outputs.title }}
-      pr-author: ${{ steps.pr.outputs.author }}
-      prev-sha: ${{ steps.merge.outputs.prev_sha }}
-      new-sha: ${{ steps.merge.outputs.new_sha }}
-      merge-success: ${{ steps.merge.outputs.success }}
-      comment-id: ${{ steps.loading_comment.outputs.comment-id }}
     steps:
       - name: Create loading comment
         id: loading_comment
@@ -157,34 +147,18 @@ jobs:
 
             _@${{ env.COMMENTER }}_
 
-  update-changelog:
-    needs: merge-pr
-    if: needs.merge-pr.outputs.allowed == 'true' && needs.merge-pr.outputs.merge-success == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set environment variables
+      - name: Set additional environment variables for changelog
+        if: steps.permission_check.outputs.allowed == 'true' && steps.merge.outputs.success == 'true'
         run: |
-          echo "COMMENTER=${{ github.event.comment.user.login }}" >> $GITHUB_ENV
-          echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_ENV
-          echo "PR_TITLE=${{ needs.merge-pr.outputs.pr-title }}" >> $GITHUB_ENV
-          echo "PR_AUTHOR=${{ needs.merge-pr.outputs.pr-author }}" >> $GITHUB_ENV
-          echo "PR_BRANCH=${{ needs.merge-pr.outputs.pr-branch }}" >> $GITHUB_ENV
-          echo "BASE_BRANCH=${{ needs.merge-pr.outputs.base-branch }}" >> $GITHUB_ENV
-          echo "PREV_SHA=${{ needs.merge-pr.outputs.prev-sha }}" >> $GITHUB_ENV
-          echo "NEW_SHA=${{ needs.merge-pr.outputs.new-sha }}" >> $GITHUB_ENV
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.MERGE_PAT }}
-  
-      - name: Pull latest changes
-        run: |
-          git checkout ${{ env.BASE_BRANCH }}
-          git pull origin ${{ env.BASE_BRANCH }}
+          echo "PR_TITLE=${{ steps.pr.outputs.title }}" >> $GITHUB_ENV
+          echo "PR_AUTHOR=${{ steps.pr.outputs.author }}" >> $GITHUB_ENV
+          echo "PR_BRANCH=${{ steps.pr.outputs.branch }}" >> $GITHUB_ENV
+          echo "BASE_BRANCH=${{ steps.pr.outputs.base_branch }}" >> $GITHUB_ENV
+          echo "PREV_SHA=${{ steps.merge.outputs.prev_sha }}" >> $GITHUB_ENV
+          echo "NEW_SHA=${{ steps.merge.outputs.new_sha }}" >> $GITHUB_ENV
 
       - name: Update CHANGELOG.md
+        if: steps.permission_check.outputs.allowed == 'true' && steps.merge.outputs.success == 'true'
         id: changelog
         run: |
           declare -A TYPE_MAP=(
@@ -273,10 +247,10 @@ jobs:
           fi
 
       - name: Comment changelog failure
-        if: steps.changelog.outputs.success == 'false'
+        if: steps.permission_check.outputs.allowed == 'true' && steps.merge.outputs.success == 'true' && steps.changelog.outputs.success == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          comment-id: ${{ needs.merge-pr.outputs.comment-id }}
+          comment-id: ${{ steps.loading_comment.outputs.comment-id }}
           edit-mode: replace
           body: |
             ⚠️ Merge succeeded but changelog update failed.
@@ -290,10 +264,10 @@ jobs:
             _@${{ env.COMMENTER }}_
 
       - name: Comment success
-        if: steps.changelog.outputs.success == 'true'
+        if: steps.permission_check.outputs.allowed == 'true' && steps.merge.outputs.success == 'true' && steps.changelog.outputs.success == 'true'
         uses: peter-evans/create-or-update-comment@v4
         with:
-          comment-id: ${{ needs.merge-pr.outputs.comment-id }}
+          comment-id: ${{ steps.loading_comment.outputs.comment-id }}
           edit-mode: replace
           body: |
             🎉 Successfully fast-forward merged `${{ env.PR_BRANCH }}` into `${{ env.BASE_BRANCH }}`.
