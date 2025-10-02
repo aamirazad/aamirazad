@@ -45,7 +45,7 @@ jobs:
           fi
 
       - name: Comment permission denied
-        if: failure() && steps.permission_check.outputs.allowed == 'false'
+        if: failure() || steps.permission_check.outputs.allowed == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.loading_comment.outputs.comment-id }}
@@ -134,7 +134,7 @@ jobs:
           fi
 
       - name: Comment merge failure
-        if: failure() && steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false'
+        if: failure() || steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.loading_comment.outputs.comment-id }}
@@ -263,7 +263,7 @@ jobs:
           fi
 
       - name: Comment changelog failure
-        if: failure() && steps.permission_check.outputs.allowed == 'true' && steps.merge.outputs.success == 'true' && steps.check_changelog.outputs.skip == 'false' && steps.changelog.outputs.success == 'false'
+        if: failure() || steps.permission_check.outputs.allowed == 'true' && steps.merge.outputs.success == 'true' && steps.check_changelog.outputs.skip == 'false' && steps.changelog.outputs.success == 'false'
         uses: peter-evans/create-or-update-comment@v4
         with:
           comment-id: ${{ steps.loading_comment.outputs.comment-id }}
