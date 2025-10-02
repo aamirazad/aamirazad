@@ -155,7 +155,7 @@ jobs:
           LABELS='${{ steps.pr.outputs.labels }}'
           BASE_BRANCH='${{ steps.pr.outputs.base_branch }}'
           SKIP="false"
-          if echo "$LABELS" | jq -e 'index("no-changelog")' > /dev/null; then
+          if echo "$LABELS" | jq -e 'index("skip-changelog")' > /dev/null; then
             SKIP="true"
           fi
           if [ "$BASE_BRANCH" != "main" ]; then
