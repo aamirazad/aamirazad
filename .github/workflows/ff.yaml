@@ -106,7 +106,7 @@ jobs:
           comment-id: ${{ steps.loading_comment.outputs.comment-id }}
           edit-mode: replace
           body: |
-            ⚠️ Cannot fast-forward merge because `${{ steps.pr.outputs.branch }}` is not up to date with `${{ steps.pr.outputs.base_branch }}`. Please rebase first.
+            ⚠️ Cannot fast-forward merge because `${{ steps.pr.outputs.branch }}` is not up to date with `${{ steps.pr.outputs.base_branch }}`. Please rebase your feature branch to `${{ steps.pr.outputs.base_branch }}`.
 
             [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
@@ -142,7 +142,7 @@ jobs:
           body: |
             ❌ Merge failed.
 
-            ${{ steps.merge.outputs.error_type == 'push_failed' && '**Push rejected**: This is likely due to repository rules (e.g., no merge commits allowed). The merge was successful locally but could not be pushed.' || '**Merge conflict**: Unable to fast-forward merge. This usually means the branch cannot be cleanly merged. Please try rebasing your feature branch to `origin/main`' }}
+            ${{ steps.merge.outputs.error_type == 'push_failed' && '**Push rejected**: This is likely due to repository rules (e.g., no merge commits allowed). The merge was successful locally but could not be pushed.' || '**Merge conflict**: Unable to fast-forward merge. This usually means the branch cannot be cleanly merged.' }}
 
             [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
@@ -153,11 +153,15 @@ jobs:
         id: check_changelog
         run: |
           LABELS='${{ steps.pr.outputs.labels }}'
+          BASE_BRANCH='${{ steps.pr.outputs.base_branch }}'
+          SKIP="false"
           if echo "$LABELS" | jq -e 'index("no-changelog")' > /dev/null; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
+            SKIP="true"
           fi
+          if [ "$BASE_BRANCH" != "main" ]; then
+            SKIP="true"
+          fi
+          echo "skip=$SKIP" >> $GITHUB_OUTPUT
 
       - name: Set additional environment variables for changelog
         if: steps.permission_check.outputs.allowed == 'true' && steps.merge.outputs.success == 'true' && steps.check_changelog.outputs.skip == 'false'
@@ -297,6 +301,6 @@ jobs:
             🎉 Successfully fast-forward merged `${{ steps.pr.outputs.branch }}` into `${{ steps.pr.outputs.base_branch }}`.
             - Compare: https://github.com/${{ github.repository }}/compare/${{ steps.merge.outputs.prev_sha }}...${{ steps.merge.outputs.new_sha }}
 
-            ℹ️ Changelog update skipped due to `no-changelog` label.
+            ℹ️ Changelog update skipped.
 
             [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
