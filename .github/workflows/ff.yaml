@@ -20,7 +20,7 @@ jobs:
             "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
             -f body='<img src="https://xrgkyc5aexvkc7oh.public.blob.vercel-storage.com/loading-spinner-TPIqYiHmChtY21ZfF6puFEZq9X5MDx" width="20" align="top">  Merging...
 
-          _I'm going as fast as I can!_
+          _I&apos;m going as fast as I can!_
 
           [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})' \
             --jq '.id')
