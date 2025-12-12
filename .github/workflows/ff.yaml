@@ -40,7 +40,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "/repos/${{ github.repository }}/collaborators/${{ env.COMMENTER }}/permission" \
             --jq '.permission')
-          
+
           if [[ "$PERMISSION" == "admin" || "$PERMISSION" == "write" ]]; then
             echo "allowed=true" >> $GITHUB_OUTPUT
           else
@@ -76,7 +76,7 @@ jobs:
           PR_DATA=$(gh api \
             -H "Accept: application/vnd.github+json" \
             "/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}")
-          
+
           echo "branch=$(echo "$PR_DATA" | jq -r '.head.ref')" >> $GITHUB_OUTPUT
           echo "base_branch=$(echo "$PR_DATA" | jq -r '.base.ref')" >> $GITHUB_OUTPUT
           echo "title=$(echo "$PR_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
@@ -261,7 +261,7 @@ jobs:
 
           # Create commit via API (will be verified)
           ENCODED_CONTENT=$(echo "$NEW_CHANGELOG" | base64 -w 0)
-          
+
           if gh api \
             --method PUT \
             -H "Accept: application/vnd.github+json" \
