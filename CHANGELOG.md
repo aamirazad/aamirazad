@@ -3,6 +3,7 @@
 <details>
 <summary>All commits</summary>
 
+- **Other**: merge test ([#45](https://github.com/aamirazad/aamirazad/pull/45)) by [@aamirazad](https://github.com/aamirazad) - [`1bbcd74...bdebf60`](https://github.com/aamirazad/aamirazad/compare/1bbcd74...bdebf60)
 - **Feature**: add temp file ([#44](https://github.com/aamirazad/aamirazad/pull/44)) by [@aamirazad](https://github.com/aamirazad) - [`ed2725d...a61842c`](https://github.com/aamirazad/aamirazad/compare/ed2725d...a61842c)
 - **Feature**: remove temp file ([#43](https://github.com/aamirazad/aamirazad/pull/43)) by [@aamirazad](https://github.com/aamirazad) - [`c5b2ce2...fbf43ca`](https://github.com/aamirazad/aamirazad/compare/c5b2ce2...fbf43ca)
 - **Feature**: remove temp file ([#42](https://github.com/aamirazad/aamirazad/pull/42)) by [@aamirazad](https://github.com/aamirazad) - [`10b56ef...75b0048`](https://github.com/aamirazad/aamirazad/compare/10b56ef...75b0048)
