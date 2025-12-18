@@ -3,6 +3,7 @@
 <details>
 <summary>All commits</summary>
 
+- **Test**: test ([#47](https://github.com/aamirazad/aamirazad/pull/47)) by [@aamirazad](https://github.com/aamirazad) - [`cbe1612...bfc5fdc`](https://github.com/aamirazad/aamirazad/compare/cbe1612...bfc5fdc)
 - **Other**: test file ([#46](https://github.com/aamirazad/aamirazad/pull/46)) by [@aamirazad](https://github.com/aamirazad) - [`24e38ba...624f8db`](https://github.com/aamirazad/aamirazad/compare/24e38ba...624f8db)
 - **Other**: test file ([#46](https://github.com/aamirazad/aamirazad/pull/46)) by [@aamirazad](https://github.com/aamirazad) - [`fc6d383...b98f51a`](https://github.com/aamirazad/aamirazad/compare/fc6d383...b98f51a)
 - **Other**: merge test ([#45](https://github.com/aamirazad/aamirazad/pull/45)) by [@aamirazad](https://github.com/aamirazad) - [`1bbcd74...bdebf60`](https://github.com/aamirazad/aamirazad/compare/1bbcd74...bdebf60)
