@@ -84,7 +84,6 @@ jobs:
           echo "base_branch=$(echo "$PR_DATA" | jq -r '.base.ref')" >> $GITHUB_OUTPUT
           echo "title=$(echo "$PR_DATA" | jq -r '.title')" >> $GITHUB_OUTPUT
           echo "author=$(echo "$PR_DATA" | jq -r '.user.login')" >> $GITHUB_OUTPUT
-          echo "mergeable=$(echo "$PR_DATA" | jq -r '.mergeable')" >> $GITHUB_OUTPUT
           echo "state=$(echo "$PR_DATA" | jq -r '.state')" >> $GITHUB_OUTPUT
           echo "labels=$(echo "$PR_DATA" | jq -c '[.labels[].name]')" >> $GITHUB_OUTPUT
 
@@ -92,8 +91,40 @@ jobs:
         if: steps.permission_check.outputs.allowed == 'true'
         run: git fetch origin +refs/heads/*:refs/remotes/origin/*
 
+      - name: Check if PR is up to date
+        if: steps.permission_check.outputs.allowed == 'true' && steps.pr.outputs.state == 'open'
+        id: up_to_date
+        run: |
+          git fetch origin ${{ steps.pr.outputs.branch }}
+          git fetch origin ${{ steps.pr.outputs.base_branch }}
+          
+          if git merge-base --is-ancestor origin/${{ steps.pr.outputs.base_branch }} origin/${{ steps.pr.outputs.branch }}; then
+            echo "result=up_to_date" >> $GITHUB_OUTPUT
+          else
+            echo "result=outdated" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment if outdated or closed
+        if: steps.permission_check.outputs.allowed == 'true' && (steps.pr.outputs.state != 'open' || steps.up_to_date.outputs.result == 'outdated')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ steps.pr.outputs.state }}" != "open" ]; then
+            BODY="⚠️ Cannot merge because the pull request is ${{ steps.pr.outputs.state }}."
+          else
+            BODY="⚠️ Cannot fast-forward merge because \`${{ steps.pr.outputs.branch }}\` is not up to date with \`${{ steps.pr.outputs.base_branch }}\`. Please rebase your feature branch to \`${{ steps.pr.outputs.base_branch }}\` and try again."
+          fi
+          
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/issues/comments/${{ steps.loading_comment.outputs.comment_id }}" \
+            -f body="$BODY
+
+          [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+
       - name: Check if changelog should be skipped
-        if: steps.permission_check.outputs.allowed == 'true'
+        if: steps.permission_check.outputs.allowed == 'true' && steps.pr.outputs.state == 'open' && steps.up_to_date.outputs.result == 'up_to_date'
         id: check_changelog
         run: |
           LABELS='${{ steps.pr.outputs.labels }}'
@@ -107,20 +138,19 @@ jobs:
           fi
           echo "skip=$SKIP" >> $GITHUB_OUTPUT
 
-      - name: Set additional environment variables for changelog
-        if: steps.permission_check.outputs.allowed == 'true' && steps.check_changelog.outputs.skip == 'false'
+      - name: Set environment variables for merge/changelog
+        if: steps.permission_check.outputs.allowed == 'true' && steps.pr.outputs.state == 'open' && steps.up_to_date.outputs.result == 'up_to_date'
         run: |
           echo "PR_TITLE=${{ steps.pr.outputs.title }}" >> $GITHUB_ENV
           echo "PR_AUTHOR=${{ steps.pr.outputs.author }}" >> $GITHUB_ENV
           echo "PR_BRANCH=${{ steps.pr.outputs.branch }}" >> $GITHUB_ENV
           echo "BASE_BRANCH=${{ steps.pr.outputs.base_branch }}" >> $GITHUB_ENV
           
-          # Calculate SHAs for the changelog entry (Code comparison)
           echo "PREV_SHA=$(git rev-parse origin/${{ steps.pr.outputs.base_branch }})" >> $GITHUB_ENV
           echo "NEW_SHA=$(git rev-parse origin/${{ steps.pr.outputs.branch }})" >> $GITHUB_ENV
 
       - name: Update CHANGELOG.md on Feature Branch
-        if: steps.permission_check.outputs.allowed == 'true' && steps.check_changelog.outputs.skip == 'false'
+        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.check_changelog.outputs.skip == 'false'
         id: changelog
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -220,7 +250,7 @@ jobs:
           fi
 
       - name: Comment changelog failure
-        if: failure() || (steps.permission_check.outputs.allowed == 'true' && steps.check_changelog.outputs.skip == 'false' && steps.changelog.outputs.success == 'false')
+        if: failure() || (steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.check_changelog.outputs.skip == 'false' && steps.changelog.outputs.success == 'false')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -238,35 +268,8 @@ jobs:
 
           _@${{ env.COMMENTER }}_'
 
-      - name: Check if PR is up to date
-        if: steps.permission_check.outputs.allowed == 'true' && (steps.changelog.outputs.success == 'true' || steps.check_changelog.outputs.skip == 'true')
-        id: up_to_date
-        run: |
-          # Fetch the latest state (feature branch might have a new changelog commit)
-          git fetch origin ${{ steps.pr.outputs.branch }}
-          git fetch origin ${{ steps.pr.outputs.base_branch }}
-          
-          if git merge-base --is-ancestor origin/${{ steps.pr.outputs.base_branch }} origin/${{ steps.pr.outputs.branch }}; then
-            echo "result=up_to_date" >> $GITHUB_OUTPUT
-          else
-            echo "result=outdated" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Comment if outdated
-        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'outdated'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/issues/comments/${{ steps.loading_comment.outputs.comment_id }}" \
-            -f body='⚠️ Cannot fast-forward merge because `${{ steps.pr.outputs.branch }}` is not up to date with `${{ steps.pr.outputs.base_branch }}`. Please rebase your feature branch to `${{ steps.pr.outputs.base_branch }}` and try again.
-
-          [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
-
       - name: Fast-forward merge into base
-        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date'
+        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && (steps.changelog.outputs.success == 'true' || steps.check_changelog.outputs.skip == 'true')
         id: merge
         run: |
           git checkout ${{ steps.pr.outputs.base_branch }}
