@@ -280,18 +280,37 @@ jobs:
             echo "error_type=merge_failed" >> $GITHUB_OUTPUT
           fi
 
-      - name: Comment merge failure
-        if: failure() || (steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false')
+      - name: Revert changelog commit on failure
+        if: (failure() || (steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false')) && steps.changelog.outputs.success == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api \
             --method PATCH \
             -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/git/refs/heads/${{ steps.pr.outputs.branch }}" \
+            -f sha="${{ env.NEW_SHA }}" \
+            -f force=true
+
+      - name: Comment merge failure
+        if: failure() || (steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REVERT_MSG=""
+          if [ "${{ steps.changelog.outputs.success }}" == "true" ]; then
+            REVERT_MSG="🔄 The changelog commit has been reverted from the feature branch."
+          fi
+
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
             "/repos/${{ github.repository }}/issues/comments/${{ steps.loading_comment.outputs.comment_id }}" \
-            -f body='❌ Merge failed.
+            -f body="❌ Merge failed.
 
           ${{ steps.merge.outputs.error_type == 'push_failed' && '**Push rejected**: This is likely due to repository rules (e.g., no merge commits allowed).' || '**Merge failed**: Fast-forward merge failed locally.' }}
+
+          $REVERT_MSG
 
           [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
