@@ -91,28 +91,42 @@ jobs:
         if: steps.permission_check.outputs.allowed == 'true'
         run: git fetch origin +refs/heads/*:refs/remotes/origin/*
 
-      - name: Check if PR is up to date
+      - name: Attempt Auto-Rebase
         if: steps.permission_check.outputs.allowed == 'true' && steps.pr.outputs.state == 'open'
-        id: up_to_date
+        id: rebase
         run: |
-          git fetch origin ${{ steps.pr.outputs.branch }}
-          git fetch origin ${{ steps.pr.outputs.base_branch }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          if git merge-base --is-ancestor origin/${{ steps.pr.outputs.base_branch }} origin/${{ steps.pr.outputs.branch }}; then
-            echo "result=up_to_date" >> $GITHUB_OUTPUT
+          git checkout ${{ steps.pr.outputs.branch }}
+          
+          if git merge-base --is-ancestor origin/${{ steps.pr.outputs.base_branch }} HEAD; then
+            echo "status=already_up_to_date" >> $GITHUB_OUTPUT
           else
-            echo "result=outdated" >> $GITHUB_OUTPUT
+            echo "Attempting auto-rebase..."
+            if git rebase origin/${{ steps.pr.outputs.base_branch }}; then
+              if git push origin ${{ steps.pr.outputs.branch }} --force-with-lease; then
+                echo "status=success" >> $GITHUB_OUTPUT
+              else
+                echo "status=push_failed" >> $GITHUB_OUTPUT
+              fi
+            else
+              git rebase --abort
+              echo "status=failed" >> $GITHUB_OUTPUT
+            fi
           fi
 
-      - name: Comment if outdated or closed
-        if: steps.permission_check.outputs.allowed == 'true' && (steps.pr.outputs.state != 'open' || steps.up_to_date.outputs.result == 'outdated')
+      - name: Comment if rebase failed or closed
+        if: steps.permission_check.outputs.allowed == 'true' && (steps.pr.outputs.state != 'open' || steps.rebase.outputs.status == 'failed' || steps.rebase.outputs.status == 'push_failed')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ steps.pr.outputs.state }}" != "open" ]; then
             BODY="⚠️ Cannot merge because the pull request is ${{ steps.pr.outputs.state }}."
+          elif [ "${{ steps.rebase.outputs.status }}" == "failed" ]; then
+            BODY="⚠️ Auto-rebase failed due to conflicts. Please rebase your feature branch \`${{ steps.pr.outputs.branch }}\` manually to \`${{ steps.pr.outputs.base_branch }}\` and try again."
           else
-            BODY="⚠️ Cannot fast-forward merge because \`${{ steps.pr.outputs.branch }}\` is not up to date with \`${{ steps.pr.outputs.base_branch }}\`. Please rebase your feature branch to \`${{ steps.pr.outputs.base_branch }}\` and try again."
+            BODY="⚠️ Auto-rebase succeeded but force-push failed. This might be due to branch protection rules."
           fi
           
           gh api \
@@ -124,7 +138,7 @@ jobs:
           [View workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
 
       - name: Check if changelog should be skipped
-        if: steps.permission_check.outputs.allowed == 'true' && steps.pr.outputs.state == 'open' && steps.up_to_date.outputs.result == 'up_to_date'
+        if: steps.permission_check.outputs.allowed == 'true' && steps.pr.outputs.state == 'open' && (steps.rebase.outputs.status == 'success' || steps.rebase.outputs.status == 'already_up_to_date')
         id: check_changelog
         run: |
           LABELS='${{ steps.pr.outputs.labels }}'
@@ -139,7 +153,7 @@ jobs:
           echo "skip=$SKIP" >> $GITHUB_OUTPUT
 
       - name: Set environment variables for merge/changelog
-        if: steps.permission_check.outputs.allowed == 'true' && steps.pr.outputs.state == 'open' && steps.up_to_date.outputs.result == 'up_to_date'
+        if: steps.permission_check.outputs.allowed == 'true' && steps.pr.outputs.state == 'open' && (steps.rebase.outputs.status == 'success' || steps.rebase.outputs.status == 'already_up_to_date')
         run: |
           echo "PR_TITLE=${{ steps.pr.outputs.title }}" >> $GITHUB_ENV
           echo "PR_AUTHOR=${{ steps.pr.outputs.author }}" >> $GITHUB_ENV
@@ -150,7 +164,7 @@ jobs:
           echo "NEW_SHA=$(git rev-parse origin/${{ steps.pr.outputs.branch }})" >> $GITHUB_ENV
 
       - name: Update CHANGELOG.md on Feature Branch
-        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.check_changelog.outputs.skip == 'false'
+        if: steps.permission_check.outputs.allowed == 'true' && (steps.rebase.outputs.status == 'success' || steps.rebase.outputs.status == 'already_up_to_date') && steps.check_changelog.outputs.skip == 'false'
         id: changelog
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -250,7 +264,7 @@ jobs:
           fi
 
       - name: Comment changelog failure
-        if: failure() || (steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.check_changelog.outputs.skip == 'false' && steps.changelog.outputs.success == 'false')
+        if: failure() || (steps.permission_check.outputs.allowed == 'true' && (steps.rebase.outputs.status == 'success' || steps.rebase.outputs.status == 'already_up_to_date') && steps.check_changelog.outputs.skip == 'false' && steps.changelog.outputs.success == 'false')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -269,7 +283,7 @@ jobs:
           _@${{ env.COMMENTER }}_'
 
       - name: Fast-forward merge into base
-        if: steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && (steps.changelog.outputs.success == 'true' || steps.check_changelog.outputs.skip == 'true')
+        if: steps.permission_check.outputs.allowed == 'true' && (steps.rebase.outputs.status == 'success' || steps.rebase.outputs.status == 'already_up_to_date') && (steps.changelog.outputs.success == 'true' || steps.check_changelog.outputs.skip == 'true')
         id: merge
         run: |
           git checkout ${{ steps.pr.outputs.base_branch }}
@@ -287,7 +301,7 @@ jobs:
           fi
 
       - name: Revert changelog commit on failure
-        if: (failure() || (steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false')) && steps.changelog.outputs.success == 'true'
+        if: (failure() || (steps.permission_check.outputs.allowed == 'true' && (steps.rebase.outputs.status == 'success' || steps.rebase.outputs.status == 'already_up_to_date') && steps.merge.outputs.success == 'false')) && steps.changelog.outputs.success == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -299,7 +313,7 @@ jobs:
             -f force=true
 
       - name: Comment merge failure
-        if: failure() || (steps.permission_check.outputs.allowed == 'true' && steps.up_to_date.outputs.result == 'up_to_date' && steps.merge.outputs.success == 'false')
+        if: failure() || (steps.permission_check.outputs.allowed == 'true' && (steps.rebase.outputs.status == 'success' || steps.rebase.outputs.status == 'already_up_to_date') && steps.merge.outputs.success == 'false')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
