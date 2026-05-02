@@ -6,7 +6,7 @@ I am a dedicated high school student who loves learning. Recently, I've invested
 <hr>
 <div align="center">
   <a href="https://github.com/anuraghazra/github-readme-stats">
-    <img align="center" width+200 src="https://github-readme-stats.vercel.app/api?username=aamirazad&theme=rose_pine&show_icons=true&card_width=300" />
+    <img align="center" width+200 src="https://github-readme-stats-fast.vercel.app/api?username=aamirazad&theme=rose_pine&show_icons=true&card_width=300" />
   </a>
   <a href="https://github.com/aamirazad/streaks-stats">
     <img align="center" src="https://streak.aamirazad.com/?user=aamirazad&theme=dark&mode=weekly&card_width=350" alt="GitHub Streak" />
