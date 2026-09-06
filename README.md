@@ -1,6 +1,6 @@
 ### Hey there!
 
-I am a dedicated high student who loves learning. Recently, I've invested [many hours](https://wakatime.com/@AamirA) in learning programming. I've accomplished a lot through my studies: I completed [CS50](https://cs50.harvard.edu/), [Carnegie Mellon University](https://academy.cs.cmu.edu/course-info)'s College Programming and Computer Science, advanced to the FBLA National Leadership Conference, and competed at the Young Entrepreneurs Academy National Competition. I have many different projects I'm working on, feel free to check out my [personal website](https://www.aamirazad.com/) to learn more about what I'm building.
+I am a student at [RIT](https://www.rit.edu/) studying computer science. I've invested [many hours](https://wakatime.com/@AamirA) in learning programming. I've accomplished a lot through my studies: I completed [CS50](https://cs50.harvard.edu/), [Carnegie Mellon University](https://academy.cs.cmu.edu/course-info)'s College Programming and Computer Science, advanced to the FBLA National Leadership Conference, and competed at the Young Entrepreneurs Academy National Competition. I have many different projects I'm working on, I recommend checking my [personal website](https://www.aamirazad.com/) to learn what I'm working on right now.
 
 <a href="https://wakatime.com/@a74de5a2-6029-42fc-af5a-6c68022b44ae"><img src="https://wakatime.com/badge/user/a74de5a2-6029-42fc-af5a-6c68022b44ae.svg" alt="Total time coded since Oct 12 2022" /></a>
 <hr>
